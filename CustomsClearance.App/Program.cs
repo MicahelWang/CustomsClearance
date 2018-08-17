@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using CustomsClearance.Utils;
 
 namespace CustomsClearance.App
 {
@@ -16,6 +17,7 @@ namespace CustomsClearance.App
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            Messagers.Default.Register(MessageNames.HttpMessage,new Messager<HttpMessage>());
             Application.Run(new Form1());
         }
     }

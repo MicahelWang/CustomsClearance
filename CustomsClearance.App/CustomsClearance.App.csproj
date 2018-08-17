@@ -78,5 +78,14 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="Images\install.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CustomsClearance.Utils\CustomsClearance.Utils.csproj">
+      <Project>{C2C59FA5-F1B6-4AD7-9E75-B75DC831B241}</Project>
+      <Name>CustomsClearance.Utils</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -49,8 +49,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
+    <Compile Include="BaseFilterEvent.cs" />
+    <Compile Include="MessageNames.cs" />
+    <Compile Include="Message.cs" />
+    <Compile Include="Messager.cs" />
     <Compile Include="IFilterEvent.cs" />
+    <Compile Include="Messagers.cs" />
     <Compile Include="NetworkInterceptor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

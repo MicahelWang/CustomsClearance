@@ -11,10 +11,12 @@ namespace CustomsClearance.Utils
 {
     public class NetworkInterceptor
     {
-        private static NetworkInterceptor _instance = null;
+        private static NetworkInterceptor _instance;
         private static ExplicitProxyEndPoint _explicitEndPoint;
+        public bool isRunning { get; private set; }
         private NetworkInterceptor()
         {
+            _events = new List<IFilterEvent>();
         }
 
         public static NetworkInterceptor Instance => _instance ?? (_instance = new NetworkInterceptor());
@@ -29,8 +31,10 @@ namespace CustomsClearance.Utils
                 _proxyServer.BeforeResponse -= OnResponse;
                 _proxyServer.ServerCertificateValidationCallback -= OnCertificateValidation;
                 _proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
-
-                _proxyServer.Stop();
+                if (_proxyServer.ProxyRunning)
+                {
+                    _proxyServer.Stop();
+                }               
                 _proxyServer.Dispose();
             }
 
@@ -38,14 +42,28 @@ namespace CustomsClearance.Utils
 
         public void Start()
         {
-            if (_proxyServer !=null)
+            if (_proxyServer==null)
+            {
+                Initialize();               
+            }
+            if (!_proxyServer.ProxyRunning)
             {
                 _proxyServer.Start();
             }
+            isRunning = true;
         }
 
         public void Stop()
         {
+            if (_proxyServer==null)
+            {
+                return;
+            }
+            if (_proxyServer.ProxyRunning)
+            {
+                _proxyServer.Stop();
+            }
+            isRunning = false;
         }
         public void Initialize()
         {
@@ -58,14 +76,13 @@ namespace CustomsClearance.Utils
             //optionally set the Certificate Engine
             //Under Mono only BouncyCastle will be supported
             //proxyServer.CertificateManager.CertificateEngine = Network.CertificateEngine.BouncyCastle;
-
             _proxyServer.BeforeRequest += OnRequest;
             _proxyServer.BeforeResponse += OnResponse;
             _proxyServer.ServerCertificateValidationCallback += OnCertificateValidation;
             _proxyServer.ClientCertificateSelectionCallback += OnCertificateSelection;
 
 
-            var explicitEndPoint = new ExplicitProxyEndPoint(IPAddress.Any, 8000, true)
+            _explicitEndPoint = new ExplicitProxyEndPoint(IPAddress.Any, 8000, true)
             {
                 //Use self-issued generic certificate on all https requests
                 //Optimizes performance by not creating a certificate for each https-enabled domain
@@ -74,11 +91,11 @@ namespace CustomsClearance.Utils
             };
 
             //Fired when a CONNECT request is received
-            explicitEndPoint.BeforeTunnelConnectRequest += OnBeforeTunnelConnectRequest;
+            _explicitEndPoint.BeforeTunnelConnectRequest += OnBeforeTunnelConnectRequest;
 
             //An explicit endpoint is where the client knows about the existence of a proxy
             //So client sends request in a proxy friendly manner
-            _proxyServer.AddEndPoint(explicitEndPoint);
+            _proxyServer.AddEndPoint(_explicitEndPoint);
             _proxyServer.Start();
 
             //Transparent endpoint is useful for reverse proxy (client is not aware of the existence of proxy)
@@ -101,8 +118,9 @@ namespace CustomsClearance.Utils
                     endPoint.GetType().Name, endPoint.IpAddress, endPoint.Port);
 
             //Only explicit proxies can be set as system proxy!
-            _proxyServer.SetAsSystemHttpProxy(explicitEndPoint);
-            _proxyServer.SetAsSystemHttpsProxy(explicitEndPoint);
+            _proxyServer.SetAsSystemHttpProxy(_explicitEndPoint);
+            _proxyServer.SetAsSystemHttpsProxy(_explicitEndPoint);
+
         }
 
         #region source
@@ -193,33 +211,25 @@ namespace CustomsClearance.Utils
             }
         }
 
-        private List<IFilterEvent> events;
+        private readonly List<IFilterEvent> _events;
 
         public void AddEvent(IFilterEvent e)
         {
-            events.Add(e);
+            _events.Add(e);
         }
 
         public void ClearEvents()
         {
-            events.Clear();
+            _events.Clear();
         }
 
         public async Task OnRequest(object sender, SessionEventArgs e)
         {
-            foreach (var @event in events)
+            foreach (var @event in _events)
             {
                 if (e.WebSession.Request.RequestUri.AbsoluteUri.Contains(@event.Url))
                 {
-                    string bodyString = await e.GetRequestBodyAsString();
-                    await Task.Run(() =>
-                    {
-                        string msg = $"网址:{e.WebSession.Request.Url}" +
-                                     $"\r\n协议：{(e.WebSession.IsHttps ? "Https" : "http")}" +
-                                     $"\r\nMethod：{e.WebSession.Request.Method}" +
-                                     $"\r\n PostData：{bodyString}\r\n\r\n";
-                        Console.WriteLine(msg);
-                    });
+                  await  @event.Execute(e);                   
                 }
             }
         }

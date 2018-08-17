@@ -1,10 +1,13 @@
-﻿namespace CustomsClearance.Utils
+﻿using System.Threading.Tasks;
+using Titanium.Web.Proxy.EventArguments;
+
+namespace CustomsClearance.Utils
 {
     public interface IFilterEvent
     {
          string Url { get; set; }
 
-        void Execute();
+        Task Execute(SessionEventArgs e);
 
 
     }
